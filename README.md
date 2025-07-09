@@ -1,17 +1,17 @@
-# 🧠 Employee Turnover Prediction Model
-**Model Version**: `GradientBoostingClassifier v3.3 (Weighted Duplicates)`  
-**Author**: _Dzmitry Kandrykinski_  
+# Employee Turnover Prediction Model
+**Model Version**: `GradientBoostingClassifier v3.3 (Weighted Duplicates)` 
+**Author**: _Dzmitry Kandrykinski_ 
 **Date**: _2025-07-07_
 
 ---
 
-## 📌 Overview  
-This project provides a machine learning model to predict employee turnover (binary classification: `left` = 1, `stayed` = 0).  
+## Overview  
+This project provides a machine learning model to predict employee turnover (binary classification: `left` = 1, `stayed` = 0). 
 The model is trained using historical HR data and optimized for high recall in identifying employees at risk of leaving.
 
 ---
 
-## 📂 Files Included
+## Files Included
 
 | File Name                                        | Description                                |
 |--------------------------------------------------|--------------------------------------------|
@@ -19,11 +19,11 @@ The model is trained using historical HR data and optimized for high recall in i
 | `sample_input_structure.csv`                     | Sample input data in the required format   |
 | `README.md`                                      | This guide                                 |
 | `preprocessing.py`                               | Preprocessing code used in pipeline        |
-| `requirements.txt`                               | dependencies                               |
+| `requirements.txt`                               | Dependencies                               |
 
 ---
 
-## 🧠 Model Summary
+## Model Summary
 
 - **Model Type**: `GradientBoostingClassifier`
 - **Technique**: Duplicate row grouping + sample weighting
@@ -36,7 +36,7 @@ The model is trained using historical HR data and optimized for high recall in i
 
 ---
 
-## 📊 Model Performance
+## Model Performance
 
 | Metric        | Value |
 |---------------|-------|
@@ -48,7 +48,7 @@ The model is trained using historical HR data and optimized for high recall in i
 
 ---
 
-## 💾 Input Data Format
+## Input Data Format
 
 | Column Name             | Type    | Description                               |
 |-------------------------|---------|-------------------------------------------|
@@ -62,11 +62,62 @@ The model is trained using historical HR data and optimized for high recall in i
 | sales                   | string  | e.g., "sales", "support", "technical"     |
 | salary                  | string  | "low", "medium", "high"                   |
 
-⚠️ **Note**: Do not include the target variable column (may cause errors if included).
-⚠️ **Note**: Do not pre-encode or scale. The pipeline handles this automatically.
+**Note**: Do not include the target variable column (may cause errors if included).
+**Note**: Do not pre-encode or scale. The pipeline handles this automatically.
+**Note**: May be useful to run two-sample T-test to be sure the duplicate rows represent
+systematically different groups rather than random duplicates. 
+
+---
+### Hypothesis:
+
+* H0 (Null Hypothesis): The duplicated rows are random and do not represent a meaningful statistical pattern.
+* H1 (Alternative Hypothesis): The duplicated rows are systematically DIFFERENT — representing a group of 
+people with shared features (e.g., same job, performance level, etc.).
+
+```python
+from scipy.stats import ttest_ind, chi2_contingency
+
+# Step 1: Identify Duplicates Non-Duplicates
+duplicates = df[df.duplicated(keep=False)]
+non_duplicates = df[~df.duplicated(keep=False)]
+print(f"Duplicates: {len(duplicates)}, Non-Duplicates: {len(non_duplicates)}")
+
+# Step 2: Split and Test
+num_cols = df.select_dtypes(include=['float64', 'int64']).columns
+cat_cols = df.select_dtypes(include='object').columns
+
+# T-tests for numerical features
+print("\n----- T-test results for numerical features: -----\n")
+for col in num_cols:
+    _, pval = ttest_ind(duplicates[col], non_duplicates[col], equal_var=False)
+    print(f"{col}: p-value = {pval:.8f} {'< 0.05 => DIFFERENT (Rejrct the H0 hypothesis)' if pval < 0.05 else '=> similar (no significant difference)'}")
+
+
+# Duplicate rows flag - 1
+df['duplicate_flag'] = df.duplicated(keep=False).astype(int)
+df['duplicate_flag'].value_counts()
+
+# Chi-square test for categorical features. One-way chi-square on full column
+print("\n----- Chi-square test results for categorical features: -----\n")
+
+for col in cat_cols:
+    contingency = pd.crosstab(df['duplicate_flag'], df[col])
+    if contingency.shape[0] > 1 and contingency.shape[1] > 1:
+        chi2, pval, _, _ = chi2_contingency(contingency)
+        print(f"{col}: p-value = {pval:.4f} {'< 0.05 => DIFFERENT (Rejrct the H0 hypothesis)' if pval < 0.05 else '=> similar (no significant difference)'}")
+    else:
+        print(f"{col}: skipped (not enough variation for test)")
+```
+
+If the test confirms Ho-hypothesis: Duplicate rows are random and do not represent a 
+significant statistical pattern - drop the duplicate rows before using the model.
+
+If the test rejects Ho-hypothesis, it means that the duplicate rows represent a group of people
+with shared features (e.g., same job, performance level, etc.) - leave them in the data set.
+
 ---
 
-## 🧪 Usage Example
+## Model Usage Example
 
 ```python
 import pandas as pd
@@ -91,8 +142,3 @@ new_data['turnover_probability'] = proba
 new_data['predicted_left'] = preds
 ```
 
-## 📬 Contact & Support
-
-If you have any questions or want to integrate this into an application, feel free to contact:  
-📧 your.email@example.com  
-💼 [LinkedIn Profile or GitHub]
