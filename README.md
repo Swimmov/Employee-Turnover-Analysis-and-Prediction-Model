@@ -63,7 +63,9 @@ The model is trained using historical HR data and optimized for high recall in i
 | salary                  | string  | "low", "medium", "high"                   |
 
 **Note**: Do not include the target variable column (may cause errors if included).
+
 **Note**: Do not pre-encode or scale. The pipeline handles this automatically.
+
 **Note**: May be useful to run two-sample T-test to be sure the duplicate rows represent
 systematically different groups rather than random duplicates. 
 
