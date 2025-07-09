@@ -1,0 +1,9 @@
+Dependencies
+Name: scikit-learn
+Version: 1.6.1
+Name: pandas
+Version: 2.2.3
+Name: numpy
+Version: 1.26.4
+Name: joblib
+Version: 1.5.1
